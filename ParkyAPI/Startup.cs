@@ -18,6 +18,9 @@ using AutoMapper;
 using ParkyAPI.ParkyMapper;
 using System.Reflection;
 using System.IO;
+using Microsoft.AspNetCore.Mvc.ApiExplorer;
+using Microsoft.Extensions.Options;
+using Swashbuckle.AspNetCore.SwaggerGen;
 
 namespace ParkyAPI
 {
@@ -37,36 +40,65 @@ namespace ParkyAPI
             services.AddScoped<INationalParkRepository, NationalParkRepository>();
             services.AddScoped<ITrailRepository, TrailRepository>();
             services.AddAutoMapper(typeof(ParkyMappings));
-            services.AddSwaggerGen(options =>
+            services.AddApiVersioning(options =>
             {
-                options.SwaggerDoc("ParkyOpenAPISpec",
-                    new Microsoft.OpenApi.Models.OpenApiInfo()
-                    {
-                        Title = "Parky API",
-                        Version = "1",
-                        Description ="This is a Test API",
-                        Contact =new Microsoft.OpenApi .Models .OpenApiContact()
-                        {
-                            Email= "hamiduldiu@gmail.com",
-                            Name="Hamidul Islam",
-                            Url = new Uri ("https://www.hamidul.dk/")
-                           
-                        },
-                        License = new Microsoft.OpenApi .Models.OpenApiLicense()
-                        {
-                            Name ="MIT License",
-                            Url=new Uri("https://docs.github.com/en/github/creating-cloning-and-archiving-repositories/licensing-a-repository")
-                        }
-                    });
-                var xmlCommentFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
-                var cmlCommentsFullPath = Path.Combine(AppContext.BaseDirectory, xmlCommentFile);
-                options.IncludeXmlComments(cmlCommentsFullPath);
+                options.AssumeDefaultVersionWhenUnspecified = true;
+                options.DefaultApiVersion = new ApiVersion(1, 0);
+                options.ReportApiVersions = true;
             });
+            services.AddVersionedApiExplorer(options => options.GroupNameFormat = "'v'VVVV");
+            services .AddTransient <IConfigureOptions <SwaggerGenOptions>,ConfigureSwaggerOptions>();
+            services.AddSwaggerGen();
+            //services.AddSwaggerGen(options =>
+            //{
+            //    options.SwaggerDoc("ParkyOpenAPISpec",
+            //        new Microsoft.OpenApi.Models.OpenApiInfo()
+            //        {
+            //            Title = "Parky API",
+            //            Version = "1",
+            //            Description ="This is a Test API ",
+            //            Contact =new Microsoft.OpenApi .Models .OpenApiContact()
+            //            {
+            //                Email= "hamiduldiu@gmail.com",
+            //                Name="Hamidul Islam",
+            //                Url = new Uri ("https://www.hamidul.dk/")
+                           
+            //            },
+            //            License = new Microsoft.OpenApi .Models.OpenApiLicense()
+            //            {
+            //                Name ="MIT License",
+            //                Url=new Uri("https://docs.github.com/en/github/creating-cloning-and-archiving-repositories/licensing-a-repository")
+            //            }
+            //        });
+
+            //    //options.SwaggerDoc("ParkyOpenAPISpecTrails",
+            //    //   new Microsoft.OpenApi.Models.OpenApiInfo()
+            //    //   {
+            //    //       Title = "Parky API Trails",
+            //    //       Version = "1",
+            //    //       Description = "Park API Trails",
+            //    //       Contact = new Microsoft.OpenApi.Models.OpenApiContact()
+            //    //       {
+            //    //           Email = "hamiduldiu@gmail.com",
+            //    //           Name = "Hamidul Islam",
+            //    //           Url = new Uri("https://www.hamidul.dk/")
+
+            //    //       },
+            //    //       License = new Microsoft.OpenApi.Models.OpenApiLicense()
+            //    //       {
+            //    //           Name = "MIT License",
+            //    //           Url = new Uri("https://docs.github.com/en/github/creating-cloning-and-archiving-repositories/licensing-a-repository")
+            //    //       }
+            //    //   });
+            //    var xmlCommentFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+            //    var cmlCommentsFullPath = Path.Combine(AppContext.BaseDirectory, xmlCommentFile);
+            //    options.IncludeXmlComments(cmlCommentsFullPath);
+            //});
             services.AddControllers();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, IApiVersionDescriptionProvider provider)
         {
             if (env.IsDevelopment())
             {
@@ -75,10 +107,21 @@ namespace ParkyAPI
             
             app.UseHttpsRedirection();
             app.UseSwagger();
+            //app.UseSwaggerUI(options =>
+            //{
+            //    options.SwaggerEndpoint("/swagger/ParkyOpenAPISpec/swagger.json", "Parky API ");
+            //    //options.SwaggerEndpoint("/swagger/ParkyOpenAPISpecTrails/swagger.json", "Parky API Trails");
+            //    options.RoutePrefix = "";
+            //});
             app.UseSwaggerUI(options =>
             {
-                options.SwaggerEndpoint("/swagger/ParkyOpenAPISpec/swagger.json", "Parky API");
-                options.RoutePrefix = "";
+                foreach (var desc in provider .ApiVersionDescriptions )
+                {
+                    options.SwaggerEndpoint($"/swagger/{desc.GroupName}/swagger.json",
+                          desc.GroupName .ToUpperInvariant ()
+                        );
+                    options.RoutePrefix = "";
+                }
             });
             app.UseRouting();
 
